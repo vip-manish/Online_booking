@@ -1,0 +1,106 @@
+﻿using PingaUnitBooking.Core.Domain;
+using PingaUnitBooking.Infrastructure.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+using Microsoft.Extensions.Configuration;
+
+namespace PingaUnitBooking.Infrastructure.Implementations
+{
+    public class ProjectService : IProjectInterface
+    {
+        private readonly IDbInterface _dbInterface;
+        public ProjectService(IDbInterface _dbInterface )
+        {
+            this._dbInterface = _dbInterface;
+        }
+        public async Task<ResponseDataResults<List<ProjectAllData>>> searchData(SearchData _searchData)
+        {
+            try
+            {
+                List<ProjectAllData> _projectAllData = new List<ProjectAllData>();
+
+                using (SqlConnection connection = new SqlConnection(await _dbInterface.getREMSConnectionString()))
+                {
+                    await connection.OpenAsync();
+
+                    using (SqlCommand command = new SqlCommand("ubm_getProjectData", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@search", _searchData.search);
+                        command.Parameters.AddWithValue("@type", _searchData.type);
+
+                        using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            while (reader.Read())
+                            {
+                                ProjectAllData projectData = new ProjectAllData();
+
+                                if (_searchData.type == "Company")
+                                {
+                                    mstCompany company = new mstCompany
+                                    {
+                                        companyID = reader.GetDecimal(reader.GetOrdinal("companyID")),
+                                        companyName = reader.GetString(reader.GetOrdinal("companyName")),
+                                    };
+                                    projectData.company = new List<mstCompany> { company };
+                                }
+                                else if (_searchData.type == "Location")
+                                {
+                                    mstLocation location = new mstLocation
+                                    {
+                                        locationID = reader.GetInt32(reader.GetOrdinal("LocationID")),
+                                        locationName = reader.GetString(reader.GetOrdinal("LocationName")),
+                                    };
+                                    projectData.location = new List<mstLocation> { location };
+                                }
+                                else if (_searchData.type == "Project")
+                                {
+                                    mstProject project = new mstProject
+                                    {
+                                        projectID = reader.GetInt32(reader.GetOrdinal("ProjectID")),
+                                        projectName = reader.GetString(reader.GetOrdinal("ProjectName")),
+                                    };
+                                    projectData.project = new List<mstProject> { project };
+                                }
+                                _projectAllData.Add(projectData);
+                            }
+                        }
+                    }
+                }
+
+                return new ResponseDataResults<List<ProjectAllData>>
+                {
+                    IsSuccess = true,
+                    Message = "Data Fetch Successfully",
+                    Data = _projectAllData
+                };
+            }
+            catch (SqlException ex)
+            {
+                return new ResponseDataResults<List<ProjectAllData>>
+                {
+                    IsSuccess = false,
+                    Message = ex.Message,
+                    Data = null
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ResponseDataResults<List<ProjectAllData>>
+                {
+                    IsSuccess = false,
+                    Message = "An error occurred: " + ex.Message,
+                    Data = null
+                };
+            }
+        }
+
+
+    }
+}

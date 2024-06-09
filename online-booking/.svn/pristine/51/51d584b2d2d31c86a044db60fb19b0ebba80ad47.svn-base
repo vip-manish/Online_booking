@@ -1,0 +1,12 @@
+﻿$(document).ready(function () {
+    $('#empLoader').hide();
+    document.getElementById("requestOtpDiv").style.display = "block";
+    document.getElementById("verifyOTPDiv").style.display = "none";
+
+});
+
+function requestOTP()
+{
+    document.getElementById("requestOtpDiv").style.display = "none";
+    document.getElementById("verifyOTPDiv").style.display = "block";
+}

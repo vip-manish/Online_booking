@@ -1,0 +1,15 @@
+﻿using PingaUnitBooking.Core.Domain;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+
+namespace PingaUnitBooking.Infrastructure.Interfaces
+{
+    public interface IProjectInterface
+    {
+        Task<ResponseDataResults<List<ProjectAllData>>> searchData(SearchData _searchData);
+    }
+}

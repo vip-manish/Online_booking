@@ -1,0 +1,12 @@
+using PingaUnitBooking.Core.Domain;
+
+
+namespace PingaUnitBooking.Infrastructure.Interfaces
+{
+    public interface IMailConfigureInterface
+    {
+        Task<ResponseDataResults<List<MailConfigure>>> GetMailConfigure(decimal GroupID, int ProjectID);
+        Task<ResponseDataResults<List<Template>>> GetNotificationTemplate(decimal GroupID,string ProcessType);
+        Task<ResponseDataResults<Communication>> GetCustomerUnitDetail(int BookingID);
+    }
+}

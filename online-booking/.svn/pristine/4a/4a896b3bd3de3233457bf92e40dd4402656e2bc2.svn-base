@@ -1,0 +1,18 @@
+﻿using PingaUnitBooking.Core.Domain;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace PingaUnitBooking.Infrastructure.Interfaces
+{
+    public interface IUnitInterface
+    {
+        Task<ResponseDataResults<List<UnitData>>> unitDetailsList(decimal? groupID, int? userID);
+        Task<ResponseDataResults<List<paymentPlan>>> paymentPlanList(decimal? blockID, decimal? unitID, decimal? companyID, decimal? locationID);
+        Task<ResponseDataResults<List<intrestPlan>>> intrestPlanList(decimal? companyID, decimal? locationID, decimal? groupID);
+        Task<ResponseDataResults<int>> addUbmUnit(UnitData _unitData);
+
+    }
+}

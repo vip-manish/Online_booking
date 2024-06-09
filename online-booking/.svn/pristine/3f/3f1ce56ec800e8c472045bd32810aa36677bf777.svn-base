@@ -1,0 +1,45 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace PingaUnitBooking.Core.Domain
+{
+   
+        // Company DTO
+        public class mstCompany
+        {
+            public decimal companyID { get; set; }
+           
+            public string companyName { get; set; }
+                 }
+        // Location DTO
+        public class mstLocation
+        {
+            public decimal locationID { get; set; }
+            public string locationName { get; set; }
+          
+        }
+        // Project DTO
+        public class mstProject
+        {
+            public decimal projectID { get; set; }
+            public string projectName { get; set; }
+          
+        }
+
+        public class ProjectAllData 
+        {
+           public List<mstCompany> company { get; set; }
+           public List<mstLocation> location { get; set;}
+           public List<mstProject> project { get; set;}
+        }
+    // Search DTO
+    public class SearchData
+    {
+        public string search { get; set; }
+        public string type { get; set; }
+        public ProjectAllData projectAllData { get; set; }
+    }
+}

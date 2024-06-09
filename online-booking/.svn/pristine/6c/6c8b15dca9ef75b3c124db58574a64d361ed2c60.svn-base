@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "ikjuxiIsNxvsVUWRPk9PYy85LjHBuLrQz3eMjY1xxmQzi/hCLzgC9AX4HFAaLCU/FMNOSbssKUd+3j41ZQE/hQ==",
+  "success": true,
+  "projectFilePath": "D:\\SVN\\online-booking\\PingaUnitBooking\\PingaUnitBooking.Core\\PingaUnitBooking.Core.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\7.0.17\\microsoft.windowsdesktop.app.ref.7.0.17.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.netcore.app.ref\\7.0.17\\microsoft.netcore.app.ref.7.0.17.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\7.0.17\\microsoft.aspnetcore.app.ref.7.0.17.nupkg.sha512"
+  ],
+  "logs": []
+}

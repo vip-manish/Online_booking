@@ -1,0 +1,468 @@
+﻿using MailKit.Security;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using MimeKit;
+using PingaUnitBooking.Core.Domain;
+using PingaUnitBooking.Infrastructure.Interfaces;
+using System.Net;
+using System.Net.Mail;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+
+
+namespace PingaUnitBooking.Infrastructure.Helpers
+{
+    public class Notification :INotificationService
+    {
+ 
+
+        private readonly ITemplateInterface _templateinterface;
+        private readonly IMailConfigureInterface _mailConfigureInterface;
+        private readonly LocalStorageData _localStorage;
+        private readonly IHostingEnvironment _hostingEnvironment;
+        public const string MatchEmailPattern = @"\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*";
+        public Notification(IMailConfigureInterface mailConfigureInterface, ITemplateInterface templateinterface, LocalStorageData localStorage,
+            IHostingEnvironment hostingEnvironment)
+        {
+            _templateinterface = templateinterface;
+            _mailConfigureInterface = mailConfigureInterface;
+            _localStorage = localStorage;
+            _hostingEnvironment = hostingEnvironment;
+        }
+        public  async Task SendNotifiction(int ProjectID, int BookingID, string ProcessType)
+        {
+            try
+            {
+                decimal GroupID = _localStorage.GroupID;
+                ResponseDataResults<List<MailConfigure>> MailConfigure = await _mailConfigureInterface.GetMailConfigure(GroupID);
+                if (!MailConfigure.IsSuccess)
+                {
+                    return;
+                }
+                ResponseDataResults<List<Template>> responseDataResults = await _mailConfigureInterface.GetNotificationTemplate(GroupID, ProcessType);
+                if (!responseDataResults.IsSuccess)
+                {
+                    return;
+                } 
+                ResponseDataResults<Communication> Communicationobj = await _mailConfigureInterface.GetCustomerUnitDetail(BookingID);
+                if (!Communicationobj.IsSuccess)
+                {
+                    return;
+                }
+                MailConfigure EmailConfig = MailConfigure.Data.ToList().Find(x => x.ConfigureType == "Email" && x.IsActive==true);
+                if (EmailConfig == null)
+                {
+                    return;
+                }
+                else
+                {
+                    
+                    Template template = responseDataResults.Data.ToList().Find(x => x.TemplateType == "Email");
+                    if (template == null)
+                    {
+                        return;
+                    }
+                    string body = Replace(template.TemplateMsg, Communicationobj.Data);
+
+
+
+                    string username = EnDcHelper.Base64Decode(EmailConfig.UserName);
+                    string mailfrom = EnDcHelper.Base64Decode(EmailConfig.SenderName);
+                    string password = EnDcHelper.Base64Decode(EmailConfig.Password);
+                    
+
+
+                    if (EmailConfig.BasedOn.ToUpper() == "TLS")
+                    {
+                        var builder = new BodyBuilder();
+                        int port1 =Convert.ToInt32(EmailConfig.PortNo) != 0 ? Convert.ToInt32(EmailConfig.PortNo) : 25;
+                        var email = new MimeMessage();
+                        var smtpTLS = new MailKit.Net.Smtp.SmtpClient();
+                        smtpTLS.Connect(EmailConfig.SMTPServer, port1, SecureSocketOptions.Auto);
+
+                        if (mailfrom.Trim() != "" && IsEmail(mailfrom))
+                        {
+                            email.From.Add(MailboxAddress.Parse(mailfrom));
+                        }
+                        else
+                        {
+                            return;
+                        }
+                        if (IsEmail(Communicationobj.Data.Email.Trim()))
+                        {
+                            email.To.Add(MailboxAddress.Parse(Communicationobj.Data.Email.Trim()));
+                        }
+                        else
+                        {
+                            return;
+                        }
+
+                        email.From.Add(MailboxAddress.Parse(mailfrom));
+                        email.Subject = "Application booking";
+                        body = body.Replace("&nbsp;", "");
+                        builder.TextBody = body;
+                        List<LinkedResource> listLinkedResource = new List<LinkedResource>();
+                        string messageStr = body;
+                        if (messageStr.Contains("src"))
+                        {
+                            string[] msgArray = messageStr.Split(' ');
+                            msgArray = msgArray.Where(itemObject => itemObject.Contains("src")).ToArray<string>();
+                            int k = 1;
+                            foreach (string m in msgArray)
+                            {
+                                if (m.Contains("src"))
+                                {
+                                    string srcpath = m;
+                                    srcpath = srcpath.Replace("src=", "").Replace("\"", "");
+
+                                    string webRootPath = _hostingEnvironment.WebRootPath;
+                                    string contentRootPath = _hostingEnvironment.ContentRootPath;
+
+                                    string ImagePath = webRootPath + "\n" + contentRootPath + "\n" + srcpath;
+                                    LinkedResource LinkedImage = new LinkedResource(ImagePath);
+                                    LinkedImage.ContentId = "Image" + k;
+                                    messageStr = messageStr.Replace(m, "src=cid:" + LinkedImage.ContentId);
+                                    listLinkedResource.Add(LinkedImage);
+                                    k = k + 1;
+                                }
+                            }
+                        }
+
+                        AlternateView htmlView = AlternateView.CreateAlternateViewFromString(messageStr, null, "text/html");
+                        if (listLinkedResource.Count > 0)
+                        {
+                            foreach (LinkedResource linkResource in listLinkedResource)
+                            {
+                                htmlView.LinkedResources.Add(linkResource);
+                            }
+                        }
+
+
+
+                        email.Body = builder.ToMessageBody();
+
+                        smtpTLS.Timeout = 2147483647;
+                        smtpTLS.Authenticate(mailfrom, password);
+                        smtpTLS.Send(email);
+                        email.Dispose();
+
+
+                    }
+
+                    //// start mtalk
+
+                    else if (EmailConfig.Provider.ToUpper() == "MTALK")
+                    {
+                        MailMessage objMM = new MailMessage();
+                        // System.Net.Mail.SmtpClient mailClient = new System.Net.Mail.SmtpClient(SmtpServer);
+                        System.Net.Mail.SmtpClient mailClient;
+
+                        if (Convert.ToString(EmailConfig.PortNo) == "")
+                        {
+                            mailClient = new System.Net.Mail.SmtpClient(EmailConfig.SMTPServer);
+                        }
+                        else
+                        {
+                            mailClient = new System.Net.Mail.SmtpClient(EmailConfig.SMTPServer, Convert.ToInt32(EmailConfig.PortNo));
+                        }
+
+                        System.Net.NetworkCredential Auth = new System.Net.NetworkCredential(username, password);
+                        mailClient.UseDefaultCredentials = false;
+                        mailClient.Credentials = Auth;
+                        //if (IsSSL == true)
+                        //{
+                        //    mailClient.EnableSsl = IsSSL;
+                        //}
+
+
+                        if (mailfrom.Trim() != "" && IsEmail(mailfrom))
+                        {
+
+                            MailAddress from = new MailAddress(mailfrom);
+                            objMM.From = new MailAddress(from.ToString());
+
+                        }
+                        else
+                        {
+                            return;
+                        }
+                        if (IsEmail(Communicationobj.Data.Email.Trim()))
+                        {
+                            objMM.To.Add(new MailAddress(Communicationobj.Data.Email.ToString()));
+                        }
+                        else
+                        {
+                            return;
+                        }
+                        objMM.Subject = "Application booking";// "Notification";
+
+                        objMM.Priority = MailPriority.High;
+                        objMM.IsBodyHtml = true;
+                        string msg = body;
+                        //Session["FailedAddress"] = FailedAddress;
+                        msg = msg.Replace("&nbsp;", "");
+                        objMM.Body = msg;
+
+                        List<LinkedResource> listLinkedResource = new List<LinkedResource>();
+                        string messageStr = msg;
+                        if (messageStr.Contains("src"))
+                        {
+                            string[] msgArray = messageStr.Split(' ');
+                            msgArray = msgArray.Where(itemObject => itemObject.Contains("src")).ToArray<string>();
+                            int k = 1;
+                            foreach (string m in msgArray)
+                            {
+                                if (m.Contains("src"))
+                                {
+                                    string srcpath = m;
+                                    srcpath = srcpath.Replace("src=", "").Replace("\"", "");
+                                    string webRootPath = _hostingEnvironment.WebRootPath;
+                                    string contentRootPath = _hostingEnvironment.ContentRootPath;
+                                    string ImagePath = webRootPath + "\n" + contentRootPath + "\n" + srcpath;
+                                    LinkedResource LinkedImage = new LinkedResource(ImagePath);
+                                    LinkedImage.ContentId = "Image" + k;
+                                    messageStr = messageStr.Replace(m, "src=cid:" + LinkedImage.ContentId);
+                                    listLinkedResource.Add(LinkedImage);
+                                    k = k + 1;
+                                }
+                            }
+                        }
+
+                        AlternateView htmlView = AlternateView.CreateAlternateViewFromString(messageStr, null, "text/html");
+                        if (listLinkedResource.Count > 0)
+                        {
+                            foreach (LinkedResource linkResource in listLinkedResource)
+                            {
+                                htmlView.LinkedResources.Add(linkResource);
+                            }
+                        }
+
+                        mailClient.Send(objMM);
+                        objMM.Dispose();
+
+                    }
+                    else
+                    {
+                        System.Net.Mail.SmtpClient mailClient;
+
+                        if (Convert.ToString(EmailConfig.PortNo) == "")
+                        {
+                            //  mailClient = new SmtpClient(SmtpServer);
+                            mailClient = new System.Net.Mail.SmtpClient(EmailConfig.SMTPServer);
+                        }
+                        else
+                        {
+                            //  mailClient = new SmtpClient(SmtpServer, Convert.ToInt32(port));
+                            mailClient = new System.Net.Mail.SmtpClient(EmailConfig.SMTPServer, Convert.ToInt32(EmailConfig.PortNo));
+                        }
+
+                        System.Net.NetworkCredential Auth = new System.Net.NetworkCredential(username, password);
+                        mailClient.UseDefaultCredentials = false;
+                        mailClient.Credentials = Auth;
+                        if (EmailConfig.BasedOn =="SSL")
+                        {
+                            mailClient.EnableSsl = true;
+                        }
+
+                        if (mailfrom.Trim() != "" && IsEmail(mailfrom))
+                        {
+                            MailAddress mfrom = new MailAddress(mailfrom);
+                        }
+                        else
+                        {
+                            return;
+                        }
+
+                        MailAddress to;
+                        if (IsEmail(Communicationobj.Data.Email.ToString()))//validate TO eMail ID
+                        {
+                            to = new MailAddress(Communicationobj.Data.Email.ToString());
+                        }
+                        else
+                        {
+
+                            return;
+                        }
+
+                        MailAddress from = new MailAddress(mailfrom);
+
+                        MailMessage objMM = new MailMessage(from, to);
+
+
+                        objMM.Subject = "Application Booking";
+
+                        objMM.Priority = MailPriority.High;
+                        objMM.IsBodyHtml = true;
+                        string msg = body;
+                        //Session["FailedAddress"] = FailedAddress;
+                        msg = msg.Replace("&nbsp;", "");
+                        objMM.Body = msg;
+                        List<LinkedResource> listLinkedResource = new List<LinkedResource>();
+                        string messageStr = msg;
+                        if (messageStr.Contains("src"))
+                        {
+                            string[] msgArray = messageStr.Split(' ');
+                            msgArray = msgArray.Where(itemObject => itemObject.Contains("src")).ToArray<string>();
+                            int k = 1;
+                            foreach (string m in msgArray)
+                            {
+                                if (m.Contains("src"))
+                                {
+                                    string srcpath = m;
+                                    srcpath = srcpath.Replace("src=", "").Replace("\"", "");
+                                    string webRootPath = _hostingEnvironment.WebRootPath;
+                                    string contentRootPath = _hostingEnvironment.ContentRootPath;
+                                    string ImagePath = webRootPath + "\n" + contentRootPath + "\n" + srcpath;
+                                    LinkedResource LinkedImage = new LinkedResource(ImagePath);
+                                    LinkedImage.ContentId = "Image" + k;
+                                    messageStr = messageStr.Replace(m, "src=cid:" + LinkedImage.ContentId);
+                                    listLinkedResource.Add(LinkedImage);
+                                    k = k + 1;
+                                }
+                            }
+                        }
+
+                        AlternateView htmlView = AlternateView.CreateAlternateViewFromString(messageStr, null, "text/html");
+                        if (listLinkedResource.Count > 0)
+                        {
+                            foreach (LinkedResource linkResource in listLinkedResource)
+                            {
+                                htmlView.LinkedResources.Add(linkResource);
+                            }
+                        }
+                        //validate(bypass) x509 certificate
+                        ServicePointManager.ServerCertificateValidationCallback = delegate (object s, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) { return true; };
+                        objMM.AlternateViews.Add(htmlView);
+                        mailClient.Timeout = 2147483647;
+                        mailClient.Send(objMM);
+                        objMM.Dispose();
+                        
+                    }
+
+                }
+
+                MailConfigure WhatsAppConfig = MailConfigure.Data.ToList().Find(x => x.ConfigureType == "WhatsApp" && x.IsActive == true);
+                if (WhatsAppConfig == null)
+                {
+                    return;
+                }
+                else
+                {
+                   
+                    Template template = responseDataResults.Data.ToList().Find(x => x.TemplateType == "WhatsApp");
+                    if (template == null)
+                    {
+                        return;
+                    }
+                    string body = Replace(template.TemplateMsg, Communicationobj.Data);
+
+
+                }
+
+                MailConfigure smsConfig = MailConfigure.Data.ToList().Find(x => x.ConfigureType == "SMS" && x.IsActive == true);
+                if (smsConfig == null)
+                {
+                    return;
+                }
+                else
+                {
+                    string SMSUserName;
+                    string SMSPassword;
+                    string SMSFrom;
+                    string SMSAPI;
+                   
+                    Template template = responseDataResults.Data.ToList().Find(x => x.TemplateType == "SMS");
+                    if (template == null)
+                    {
+                        return;
+                    }
+                    string body = Replace(template.TemplateMsg, Communicationobj.Data);
+
+
+                    SMSUserName = EnDcHelper.Base64Decode(smsConfig.UserName); //c.Decrypt(SMSUserName);
+                    SMSFrom = EnDcHelper.Base64Decode(smsConfig.SenderName); //c.Decrypt(SMSFrom);
+                    SMSPassword = EnDcHelper.Base64Decode(smsConfig.Password); //c.Decrypt(SMSPassword);
+                    SMSAPI = EnDcHelper.Base64Decode(smsConfig.SmsUrl); //c.Decrypt(SMSAPI);
+                    SMSAPI = SMSAPI.Replace("=username", "=" + SMSUserName);
+                    SMSAPI = SMSAPI.Replace("=password", "=" + SMSPassword);
+                    SMSAPI = SMSAPI.Replace("=number", "=" + Communicationobj.Data.MobileNo);
+                    SMSAPI = SMSAPI.Replace("=message", "=" + body);
+                    SMSAPI = SMSAPI.Replace("=templateid", "=" + template.VendorTemplateID);
+                    Uri objURI = new Uri(SMSAPI);
+                    WebRequest objWebRequest = WebRequest.Create(objURI);
+                    WebResponse objWebResponse = objWebRequest.GetResponse();
+                    System.IO.Stream objStream = objWebResponse.GetResponseStream();
+                    System.IO.StreamReader objStreamReader = new System.IO.StreamReader(objStream);
+                    string strHTML = objStreamReader.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        private string Replace(string original, Communication bookingdetail)
+        {
+            string tempstring = original;
+            tempstring = ReplaceEx(tempstring, "[|UnitNo|]", bookingdetail.UnitDetail.unitNo);
+            tempstring = ReplaceEx(tempstring, "[|Email|]", bookingdetail.Email);
+            tempstring = ReplaceEx(tempstring, "[|MobileNo|]", bookingdetail.MobileNo);
+            tempstring = ReplaceEx(tempstring, "[|BookingDate|]", Convert.ToString(bookingdetail.BookingDate));
+            tempstring = ReplaceEx(tempstring, "[|ProjectName|]", bookingdetail.UnitDetail.projectName);
+            tempstring = ReplaceEx(tempstring, "[|ProjectAddress|]", bookingdetail.UnitDetail.projectAddress);
+            tempstring = ReplaceEx(tempstring, "[|ApplicationType|]", bookingdetail.ApplicationType);
+            tempstring = ReplaceEx(tempstring, "[|TowerName|]", bookingdetail.UnitDetail.towerName);
+            tempstring = ReplaceEx(tempstring, "[|FloorName|]", bookingdetail.UnitDetail.floorName);
+            tempstring = ReplaceEx(tempstring, "[|Area|]", Convert.ToString(bookingdetail.UnitDetail.area));
+            tempstring = ReplaceEx(tempstring, "[|Rate|]", Convert.ToString(bookingdetail.UnitDetail.rate));
+            tempstring = ReplaceEx(tempstring, "[|BasicAmount|]", Convert.ToString(bookingdetail.UnitDetail.basicAmount));
+            tempstring = ReplaceEx(tempstring, "[|AdditionalAmount|]", Convert.ToString(bookingdetail.UnitDetail.additionalCharge));
+            tempstring = ReplaceEx(tempstring, "[|DiscountAmount|]", Convert.ToString(bookingdetail.UnitDetail.discountAmount));
+            tempstring = ReplaceEx(tempstring, "[|CarpetArea|]", Convert.ToString(bookingdetail.UnitDetail.unitCarpetArea));
+            tempstring = ReplaceEx(tempstring, "[|CarpetAreaRate|]", Convert.ToString(bookingdetail.UnitDetail.unitCarpetAreaRate));
+            tempstring = ReplaceEx(tempstring, "[|UnitBalconyArea|]", Convert.ToString(bookingdetail.UnitDetail.unitBalconyArea));
+            tempstring = ReplaceEx(tempstring, "[|UnitBalconyAreaRate|]", Convert.ToString(bookingdetail.UnitDetail.unitBalconyAreaRate));
+            tempstring = ReplaceEx(tempstring, "[|UnitCarpetArea|]", Convert.ToString(bookingdetail.UnitDetail.unitCarpetArea));
+            tempstring = ReplaceEx(tempstring, "[|UnitCarpetAreaRate|]", Convert.ToString(bookingdetail.UnitDetail.unitCarpetAreaRate));
+            tempstring = ReplaceEx(tempstring, "[|BookingAmount|]", Convert.ToString(bookingdetail.BookingAmount));
+            tempstring = ReplaceEx(tempstring, "[|SalesPerson|]", bookingdetail.SalesPerson);
+            return tempstring;
+        }
+        private string ReplaceEx(string original, string pattern, string replacement)
+        {
+            int count, position0, position1;
+            count = position0 = position1 = 0;
+            string upperString = original.ToUpper();
+            string upperPattern = pattern.ToUpper();
+            int inc = (original.Length / pattern.Length) *
+                      (replacement.Length - pattern.Length);
+            char[] chars = new char[original.Length + Math.Max(0, inc)];
+            while ((position1 = upperString.IndexOf(upperPattern,
+                                              position0)) != -1)
+            {
+                for (int i = position0; i < position1; ++i)
+                    chars[count++] = original[i];
+                for (int i = 0; i < replacement.Length; ++i)
+                    chars[count++] = replacement[i];
+                position0 = position1 + pattern.Length;
+            }
+            if (position0 == 0) return original;
+            for (int i = position0; i < original.Length; ++i)
+                chars[count++] = original[i];
+            return new string(chars, 0, count);
+        }
+        public static bool IsEmail(string email)
+        {
+            /// <summary>
+            /// Checks whether the given Email-Parameter is a valid E-Mail address.
+            /// </summary>
+            /// <param name="email">Parameter-string that contains an E-Mail address.</param>
+            /// <returns>True, when Parameter-string is not null and 
+            /// contains a valid E-Mail address;
+            /// otherwise false.</returns>
+            if (email != null && email != "") return System.Text.RegularExpressions.Regex.IsMatch(email, MatchEmailPattern);
+            else return false;
+        }
+    }
+}
+

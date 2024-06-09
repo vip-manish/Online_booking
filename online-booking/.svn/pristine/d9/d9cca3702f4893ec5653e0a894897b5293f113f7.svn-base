@@ -1,0 +1,87 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using PingaUnitBooking.Core.Domain;
+using PingaUnitBooking.Infrastructure.Interfaces;
+
+
+namespace PingaUnitBooking.UI.Controllers
+{
+    [Route("api/projectController")]
+    public class ProjectController : Controller
+    {
+        private readonly IProjectInterface _projectInterface;
+      
+        public ProjectController(IProjectInterface projectInterface)
+        {
+         this._projectInterface = projectInterface;
+        }
+
+        [HttpPost]
+        [Route("SearchData")]
+        public async Task<IActionResult> SearchData([FromBody] SearchData searchData)
+        {
+            try
+            {
+                List<decimal> companyList = new List<decimal>();
+                List<decimal> locationList = new List<decimal>();
+                var groupID = Request.Cookies["groupID"];
+
+                if (searchData == null || string.IsNullOrEmpty(searchData.type))
+                {
+                    return Json(new { success = false, message = "Invalid search data." });
+                }
+
+                switch (searchData.type)
+                {
+                    case "Company":
+                        searchData.search ="GroupID="+ groupID;
+                        break;
+
+                    case "Location":
+                        if (searchData.projectAllData != null)
+                        {
+                            foreach (var companyData in searchData.projectAllData.company)
+                            {
+                                companyList.Add(companyData.companyID);
+                            }
+                            searchData.search = $"groupId = {groupID} and companyid in ({string.Join(",", companyList)})";
+                        }
+                        break;
+
+                    case "Project":
+                        if (searchData.projectAllData != null)
+                        {
+                            foreach (var companyData in searchData.projectAllData.company)
+                            {
+                                companyList.Add(companyData.companyID);
+                            }
+                            foreach (var locationData in searchData.projectAllData.location)
+                            {
+                                locationList.Add(locationData.locationID);
+                            }
+                            searchData.search = $"groupId = {groupID} and companyid in ({string.Join(",", companyList)}) and locationid in ({string.Join(",", locationList)})";
+                        }
+                        break;
+
+                    default:
+                        return Json(new { success = false, message = "Unknown search type." });
+                }
+
+                var responseData = await _projectInterface.searchData(searchData);
+
+                if (responseData.IsSuccess)
+                {
+                    return Json(new { success = true, data = responseData.Data });
+                }
+                else
+                {
+                    return Json(new { success = false, message = responseData.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+    }
+}

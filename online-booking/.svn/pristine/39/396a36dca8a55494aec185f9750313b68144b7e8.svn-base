@@ -1,0 +1,426 @@
+$(document).ready(function () {
+    GetTemplates();
+    $("#divproject").show();
+    $("#divTemplateType").show();
+    $("#divApplicationType").show();
+    $('#ddlTemplateType').select2();
+    $('#ddlAppType').select2();
+});
+
+function BindDropdown() {
+    ProcessTypeList();
+    GetProject();
+
+}
+function GetProject() {
+    $('#ddlProject').empty();
+
+    $.ajax({
+        url: '/api/TemplateController/GetProjects',
+        type: 'GET',
+        contentType: 'application/json',
+        success: function (res) {
+            if (res.success) {
+               
+                $('#ddlProject').append('<option> Select </option>');
+                for (i = 0; i < res.data.length; i++) {
+                    $('#ddlProject').append('<option id=' + res.data[i].key + '> ' + res.data[i].value + ' </option>')
+                }
+                $('#ddlProject').select2();
+            }
+            else {
+                ErrorMessage(res.data)
+
+            }
+        }
+    })
+}
+
+function ProcessTypeList() {
+    $('#ddlProcessType').empty();
+    $('#empLoader').show();
+    $.ajax({
+        url: '/api/TemplateController/ProcessTypeList',
+        type: 'GET',
+        contentType: 'application/json',
+        success: function (res) {
+           ;
+            $('#empLoader').hide();
+            if (res.success) {
+                $('#ddlProcessType').append('<option> Select </option>');
+                for (i = 0; i < res.data.length; i++) {
+                    $('#ddlProcessType').append('<option id=' + res.data[i].key + '> ' + res.data[i].value + ' </option>')
+                }
+                $('#ddlProcessType').select2();
+            }
+            else {
+                ErrorMessage(res.data)
+            }
+        }
+    });
+}
+
+$("#ddlProcessType").change(function () {
+
+    var ProcessType = document.getElementById("ddlProcessType").value;
+    $("#ddlEmbnamelist").empty();
+    if (ProcessType == 'Initiate Booking') {
+        $("#divproject").hide();
+        $("#divTemplateType").show();
+        $("#divApplicationType").show();
+        $("#divEmbededField").show();
+    }
+    else if (ProcessType == 'Final Booking') {
+        $("#divproject").hide();
+        $("#divApplicationType").hide();
+        $("#divTemplateType").show();
+        $("#divEmbededField").show();
+    }
+    else if (ProcessType == 'T&C') {
+        $("#divTemplateType").hide();
+        $("#divApplicationType").hide();
+        $("#divproject").show();
+        $("#divEmbededField").hide();
+    }
+    else {
+        $("#divproject").show();
+        $("#divTemplateType").show();
+        $("#divApplicationType").show();
+        $("#divEmbededField").show();
+
+    }
+    var e = document.getElementById("ddlProcessType")
+    var processtype = e.options[e.selectedIndex].value;
+    if (ProcessType == 'Final Booking' || ProcessType == 'Initiate Booking') {
+
+
+        $.ajax({
+            url: '/api/TemplateController/GetTemplateEmbList?ProcessType=' + processtype,
+            type: 'GET',
+            contentType: 'application/json',
+            success: function (res) {
+                $('#ddlEmbnamelist').empty();
+                if (res.success) {
+
+                    for (i = 0; i < res.data.length; i++) {
+                        $('#ddlEmbnamelist').append('<option id=' + res.data[i].key + '> ' + res.data[i].value + ' </option>')
+                    }
+                }
+                else {
+                    ErrorMessage(res.data);
+                }
+            }
+        });
+    }
+});
+
+$("#ddlAppType").change(function () {
+   
+    var e = document.getElementById("ddlAppType")
+    var apptype = e.options[e.selectedIndex].value;
+    $.ajax({
+        url: '/api/TemplateController/GetAppDocList',
+        type: 'GET',
+        contentType: 'application/json',
+        data: {
+            ApplicationType: apptype
+        },
+        success: function (res) {
+            if (res.success) {
+                Editor.data.set(res.data);
+            }
+            else {
+                ErrorMessage(res.message);
+            }
+        }
+    });
+});
+
+function chooseEmbeded(val) {
+
+    Editor.model.change(writer => {
+        var html = val;
+        var viewFragment = Editor.data.processor.toView(html);
+        var modelFragment = Editor.data.toModel(viewFragment);
+
+        var insertPosition = Editor.model.document.selection.getFirstPosition();
+
+        Editor.model.insertContent(modelFragment, insertPosition);
+    });
+}
+function changeTemplateType(val) {
+   
+    if (Editor !== null)
+        Editor.data.set('');
+    if (val == 'SMS') {
+        Editor.destroy()
+        Editor = null;
+    }
+
+    else {
+        if (Editor == null) {
+            ClassicEditor
+                .create(document.querySelector('#txteditor'))
+                .then(editor => {
+                    // editor.data.set(data.data[0]['documentName']);
+                    Editor = editor;
+
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+    }
+}
+
+
+function GetChannels() {
+    $.ajax({
+        url: '/api/TemplateController/GetChannels',
+        type: 'GET',
+        contentType: 'application/json',
+        success: function (res) {
+            if (res.success) {
+                $("#hdnChannelId").val(res.data["channelID"]);
+                $("#Whatsapp").prop("checked", res.data['isWhatsApp']);
+                $("#Email").prop("checked", res.data['isEmail']);
+                $("#Sms").prop("checked", res.data['isSms']);
+            }
+            else {
+               
+                ErrorMessage(res.data);
+            }
+        }
+    });
+}
+
+function SaveChannels() {
+    var channelId = $("#hdnChannelId").val() == '' ? '0' : $("#hdnChannelId").val();
+    var whatsapp = document.getElementById("Whatsapp").checked;
+    var email = document.getElementById("Email").checked;
+    var sms = document.getElementById("Sms").checked;
+    var isselected = false;
+    if (whatsapp == true) {
+        isselected = true;
+    }
+    if (email == true) {
+        isselected = true;
+    }
+    if (sms == true) {
+        isselected = true;
+    }
+    if (!isselected) {
+        ErrorMessage('Please check at least one channel!');
+        return
+    }
+    var data = {
+        ChannelID: channelId,
+        IsWhatsApp: whatsapp,
+        IsEmail: email,
+        IsSms: sms
+    };
+    $('#empLoader').show();
+    $.ajax({
+        url: '/api/TemplateController/SaveChannels',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function (res) {
+           
+            $('#empLoader').hide();
+            if (res.success) {
+                SuccessMessage(res.message);
+                $("#hdnChannelId").val('');
+                $('#modelChannel').modal('hide');
+                $('#modelChannel').hide();
+            }
+            else {
+                $('#empLoader').hide();
+                ErrorMessage(data.message);
+            }
+        }
+    })
+}
+
+
+function SaveTemplate() {
+   
+    var templateId = $("#hdnTemplateId").val() == '' ? '0' : $("#hdnTemplateId").val();
+    var processType = $("#ddlProcessType").val();
+    var projectId = $("#ddlProject").val() == 'Select' ? '0' : $("#ddlProject").val();
+    var templateType = $("#ddlTemplateType").val();
+    var template = Editor.getData();;
+    if (processType == '') {
+        ErrorMessage('Please select process type!');
+        return
+    }
+    if (processType == 'T&C') {
+        if (projectId == 0) {
+            ErrorMessage('Please select process type!');
+            return
+        }
+    }
+    if (processType !== 'T&C') {
+        if (templateType == '') {
+            ErrorMessage('Please select template type!');
+            return
+        }
+    }
+    var formdata = {
+        TemplateID: templateId,
+        ProcessType: processType,
+        TemplateType: templateType,
+        ProjectID: projectId,
+        TemplateMsg: template
+    };
+    $('#empLoader').show();
+    $.ajax({
+        url: '/api/TemplateController/SaveTemplate',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formdata),
+        success: function (res) {
+           
+            $('#empLoader').hide();
+            if (res.success) {
+                SuccessMessage(res.message);
+                $("#hdnTemplateId").val('');
+                $('#addTemplate').modal('hide');
+                $('#addTemplate').hide();
+            }
+            else {
+                $('#empLoader').hide();
+                ErrorMessage(data.message);
+            }
+        }
+    })
+}
+
+function GetTemplates() {
+    $('#empLoader').show();
+    $.ajax({
+
+        'type': 'GET',
+        'url': '/api/TemplateController/GetTemplateList',
+        'contentType': 'application/json',
+        dataType: 'json',
+        success: function (response) {
+           
+            $('#empLoader').hide();
+            if (response.success == false) {
+                ErrorMessage(response.data);
+            }
+
+            else {
+
+
+                var html = "<table id='TempList' class='table table-bordered table-hover' style='width:100%'>";
+                html += "<thead>";
+                html += "<tr>";
+                html += "<th style='font-family: 'sans-serif'; font-weight: normal;'>Sr.</th>";
+                html += "<th style='font-family: 'sans-serif'; font-weight: normal;'>Process Type</th>";
+                html += "<th style='font-family: 'sans-serif'; font-weight: normal;'>Project Name</th>";
+                html += "<th style='font-family: 'sans-serif'; font-weight: normal;'>Template Type</th>";
+                html += "<th style='font-family: 'sans-serif'; font-weight: normal;'>Template Message</th>";
+                html += "<th style='font-family: 'sans-serif'; font-weight: normal;'>Actions</th>";
+                html += "</tr>";
+                html += "</thead>";
+                var i = 1;
+                if (response.data.length > 0) {
+                    response.data.forEach(function (entry) {
+                        html += "<tr>";
+                        html += "<td>" + i++ + "</td>";
+                        html += "<td>" + entry.processType + "</td>";
+                        html += "<td>" + entry.projectName + "</td>";
+                        html += "<td>" + entry.templateType + "</td>";
+                        html += "<td><button type='button' data-toggle='modal' href='' data-target='#vTemplate'  onclick ='ViewTemplate(" + JSON.stringify(entry.templateMsg) + ")'  class='btn btn-info' style='float:right'>View Template</button></td>";
+                        html += "<td><button data-row=" + entry + " data-toggle='modal' href='' data-target='#addTemplate' onclick ='EditTemplate(" + JSON.stringify(entry) + ")' type = 'button' class='btn btn-primary'> <i class='fa fa-edit'></i>&nbsp;Edit</button>&nbsp;";
+                        html += "<button  data-row=" + JSON.stringify(entry.templateID) + " onclick='DeleteTemplate(" + JSON.stringify(entry) + ")' type='button' class='btn btn-danger'><i class='fa fa-bitbucket'></i>&nbsp;Delete</button>";
+                        html += "</td>";
+                        html += "</tr>";
+                    });
+                }
+                else {
+                    html += "<tr>";
+                    html += "<td colspan='7'>No Record Found!</td>";
+                    html += "</tr>";
+                }
+
+                html += "</table>";
+                document.getElementById("divTempList").innerHTML = html;
+                dataTable = $("#TempList").DataTable({
+                    "font- size": '1em',
+                    dom: 'lBfrtip',
+                    "bDestroy": true,
+                    "paging": true,
+                    "searching": true,
+                    "ordering": true,
+                    "scrollX": true,
+                    "info": false,
+                    language: {
+                        searchPlaceholder: "Search records",
+                        emptyTable: "No data found",
+                        width: '100%',
+                    },
+                })
+            }
+        }
+    })
+}
+function EditTemplate(rowData) {
+    BindDropdown();
+   
+    //  var rowData = JSON.parse(button.getAttribute('data-row'));
+    $("#hdnTemplateId").val(rowData["templateID"]);
+    
+    $("#ddlProcessType").val(rowData['processType']);
+  //  $('#ddlProcessType').trigger('change');
+    $("#ddlProject").val(rowData['projectID']);
+    $("#ddlTemplateType").val(rowData['templateType']);
+   // $('#ddlTemplateType').trigger('change');
+    Editor.data.set(rowData['templateMsg']);
+   // if (rowData[''] =='Initiate Booking')
+}
+function ViewTemplate(val) {
+    $('#dvTemp').html(val);
+}
+
+function DeleteTemplate(rowData) {
+   
+    var id = rowData["templateID"];
+    Swal.fire({
+        title: 'Are you want to delete template?',
+        text: "",
+        width: 350,
+        height: 5,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $('#empLoader').show();
+            $.ajax({
+                url: '/api/TemplateController/DeleteTemplate',
+                type: 'GET',
+                contentType: 'application/json',
+                data: {
+                    id: id
+                },
+                success: function (data) {
+                    $('#empLoader').hide();
+                    if (data.success) {
+                        SuccessMessage(data.message);
+                        GetTemplates();
+                    }
+                    else {
+                        ErrorMessage(data.message);
+                    }
+                }
+            })
+        };
+    })
+}
+
+

@@ -1,0 +1,165 @@
+﻿$(document).ready(function () {
+    $('#empLoader').hide();
+    ProjectConfigureList();
+    SearchData("Company")
+});
+
+function ProjectConfigureList() {
+    counter = 0;
+    dataTable = $("#projectUser").DataTable({
+
+        ajax: {
+            'type': 'GET',
+            'url': '/api/AuthController/userList',
+            'contentType': 'application/json',
+            data: {
+                type: 'UBMUser'
+            }
+        },
+        columns: [
+            {
+                'data': 'userId',
+                'render': function (data, type, row, meta) {
+                    return `<input type='checkbox' class='userCheckbox' data-userid='${row.userId}' />`;
+                },
+                'width': '5%'
+            },
+            {
+                'data': 'userId', 'render': function (data, type, row) {
+                    counter++; // Increment counter
+                    return `<span>${counter}</span>`;
+                },
+                'width': '1%', 'font-size': '6px'
+            },
+            {
+                'data': 'username', 'render': function (data, type, row) {
+                    return `<span>${row.username}</span>`;
+                },
+                'width': '10%', 'font-size': '6px'
+            },
+            {
+                'data': 'roleName', 'render': function (data, type, row) {
+                    return `<span>${row.roleName}</span>`;
+                },
+                'width': '10%', 'font-size': '6px'
+            },
+            {
+                'data': 'userId',
+                'render': function (data, type, row) {
+                        return `<button onclick=changeStatus("${row.userId}") type="button" class="btn btn-primary">View</button>`
+                    
+                },
+                'width': '15%',
+                'font-size': '6px'
+            },
+
+        ],
+
+        "font- size": '1em',
+        dom: 'lBfrtip',
+        "bDestroy": true,
+        "paging": true,
+        "searching": false,
+        "ordering": true,
+        "scrollX": true,
+        "info": false,
+
+        language: {
+            searchPlaceholder: "Search records",
+            emptyTable: "No data found",
+            width: '100%',
+        },
+
+    }
+    );
+
+    $('#userList').on('change', '.userCheckbox', function () {
+        var userId = $(this).data('userid');
+        if ($(this).is(':checked')) {
+            if (!selectedUserIds.includes(userId)) {
+                selectedUserIds.push(userId);
+            }
+        } else {
+            var index = selectedUserIds.indexOf(userId);
+            if (index !== -1) {
+                selectedUserIds.splice(index, 1);
+            }
+        }
+    });
+
+    /* dataTable.on('order.dt ', function () {
+         dataTable.column(0, { order: 'applied' }).nodes().each(function (cell, i) {
+             cell.innerHTML = i + 1;
+         });
+     }).draw();*/
+}
+function SearchData(type) {
+
+    var dataToSend;
+    if (type == "Company")
+    {
+        dataToSend = {
+            type: type
+        };
+    }
+    else if (type == "Location")
+    {
+        var selectedCompanies = $('#companyDropdown').val();
+
+        dataToSend = {
+            type: type,
+            projectAllData: {
+                company: []
+            }
+
+        };
+    }
+    else if (type == "Project")
+    {
+        dataToSend = {
+            type: type,
+
+        };
+    }
+
+    $.ajax({
+        url: '/api/projectController/SearchData',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(dataToSend),
+        success: function (data) {
+            if (data.success) {
+                if (type == "Company") {
+                    fillcompanyDropdown(data.data[0].company);
+                } else if (type == "Location") {
+                    fillLocationDropdown(data.data[0].company);
+                }
+                else if (type == "Project") {
+
+                }
+            }
+            else {
+                ErrorMessage(data.message)
+               
+            }
+        }
+    })
+}
+
+function fillcompanyDropdown(results) {
+    var $companydropdown = $('#companyDropdown');
+    $companydropdown.empty();
+    results.forEach(function (item) {
+        var option = new Option(item.companyName, item.companyID, false, false);
+        $companydropdown.append(option);
+    });
+    $('#companyDropdown').select2();
+    $companydropdown.select2({
+        closeOnSelect: false,
+    });
+    console.log($.fn.select2.defaults);
+}
+
+
+
+

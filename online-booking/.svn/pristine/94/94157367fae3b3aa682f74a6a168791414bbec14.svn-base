@@ -1,0 +1,43 @@
+﻿@page
+@model PingaUnitBooking.UI.Pages.SuccessModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You Page</title>
+    <link href="~/css/success.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+</head>
+<body>
+    <div class="container">
+        <div class="thank-you-section">
+            <div class="icon">
+                <i class="fa fa-check-circle" style="font-size:48px;color:forestgreen"></i>
+            </div>
+            <h1>Thank you!</h1>
+            <p>We'll sent you further your unit status on your inbox so it's easy to access. You can also explore more projects on our website and social pages.</p>
+        </div>
+        <div class="links-section">
+            <div class="connect-with-us">
+                <h2>Connect With Us</h2>
+                <div class="social-icons">
+                    <a href="#"><img src="https://img.icons8.com/color/48/000000/facebook-new.png" alt="Facebook"></a>
+                    <a href="#"><img src="https://img.icons8.com/color/48/000000/instagram-new.png" alt="Instagram"></a>
+                    <a href="#"><img src="https://img.icons8.com/color/48/000000/pinterest.png" alt="Youtube"></a>
+                    <a href="#"><img src="https://img.icons8.com/color/48/000000/twitter.png" alt="Twitter"></a>
+                </div>
+            </div>
+            <div class="visit-website">
+                <h2>Visit Our Website</h2>
+                <a href="#" class="visit-website-button">Visit Website</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

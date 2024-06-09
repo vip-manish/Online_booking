@@ -1,0 +1,32 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace PingaUnitBooking.Core.Domain
+{
+    public class MailConfigure
+    {
+        public int MailConfigureID { get; set; }
+        public string Type { get; set; }
+        public string SenderEmailID { get; set; }
+        public string SenderName { get; set; }
+        public string SMTPServer { get; set; }
+        public string UserName { get; set; }
+        public string Password { get; set; }
+        public string PerHourMail { get; set; }
+        public string URL { get; set; }
+        public string MailFrom { get; set; }
+        public int Port { get; set; }
+        public int IsSSL { get; set; }
+        public string TokenWA { get; set; }
+        public string PhoneWA { get; set; }
+        public string TypeWA { get; set; }
+        public string BasedOn { get; set; }
+        public string EmailProvider { get; set; }
+        public int IsActive { get; set; }
+    }
+}
+
+

@@ -1,0 +1,184 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using PingaUnitBooking.Core.Domain;
+using PingaUnitBooking.Infrastructure.Helpers;
+using PingaUnitBooking.Infrastructure.Interfaces;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
+using System.Text;
+namespace PingaUnitBooking.UI.Controllers
+{
+
+    [Route("api/AuthController")]
+    public class AuthController : Controller
+    {
+        private readonly IAuthInterface authIterface;
+        IConfiguration _configuration;
+        public AuthController(IAuthInterface _authIterface, IConfiguration configuration)
+        {
+            authIterface = _authIterface;
+            _configuration = configuration;
+        }
+        [HttpPost]
+        [Route("UserLogin")]
+        public async Task<IActionResult> UserLogin([FromBody] AuthData auth)
+        {
+            try
+            {
+                    var responseData = await authIterface.userLogin(auth);
+                    if (responseData.IsSuccess)
+                    {
+                    foreach (var item in responseData.Data)
+                    {
+                        bool isValid = new ValidateLicenseHelper().ValidateLicense(item.Credential, item.CredentialInfo ,item.ETADLLITEVITCA);
+                        if (!isValid)
+                        {
+                            return Json(new { success = false, message = "License Expired" });
+                        }
+                        else
+                        {
+                           var accessToken= GenrateToken(item.username, item.userId, item.groupID, item.email, item.roleName, item.roleID);
+                           var responseData2 = await authIterface.updateToken(item.userId,accessToken,item.groupID);
+                            if (responseData2.IsSuccess)
+                             {
+                              return Json(new { success = true, message = responseData.Message, accessTokenData = accessToken });
+                             }
+                            else
+                            {
+                                return Json(new { success = false, message = responseData.Message });
+                            }
+                        }
+                    }
+                    return Ok(responseData);
+                   }
+                else
+                {
+                    return Json(new { success = false, message = responseData.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+
+                return Json(new { success = false, message = "Error in login process: " + ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [Route("addUser")]
+        public async Task<IActionResult> addUser([FromBody] ubmUserData _ubmUserData)
+        {
+            try
+            {
+                
+                foreach (var userId in _ubmUserData.useridList)
+                {
+                    var userData = new ubmUserData
+                    {
+                        userID = userId,
+                        roleName = _ubmUserData.roleName,
+                        CreatedBy = int.Parse(Request.Cookies["userId"]),
+                        GroupID= Request.Cookies["GroupID"],
+                    };
+                    var responseData = await authIterface.addUser(userData);
+                    if (!responseData.IsSuccess)
+                    {
+                        return Json(new { success = false, message = responseData.Message });
+                    }
+                }
+                return Json(new { success = true, message = "All users added successfully." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error in adding users: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        // [Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
+        [Route("userList")]
+        public async Task<IActionResult> userList(string type)
+        {
+            try
+            {
+                var groupID = Request.Cookies["groupID"];
+                int roleID = int.Parse(Request.Cookies["roleID"]);
+
+                var responseData = await authIterface.userList(groupID, roleID, type);
+                if (responseData.IsSuccess)
+                {
+
+                    
+                    return Json(new { success = true, data = responseData.Data});
+                }
+                return Json(new { success = false, data = responseData.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { succes = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        [Route("changeStatus")]
+        public async Task<IActionResult> changeStatus([FromQuery] int userID)
+        {
+            try
+            {
+                var groupID = Request.Cookies["groupID"];
+                var responseData = await authIterface.changeStatus(userID, groupID);
+                if (responseData.IsSuccess)
+                {
+                    return Json(new { success = true, message = responseData.Message });
+                }
+                else
+                {
+                    return Json(new { success = false, message = responseData.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message =  ex.Message });
+            }
+        }
+
+        public string GenrateToken(string username, decimal userId, decimal groupID,string email,string roleName,decimal roleID)
+        {
+
+            var accessToken = "";  
+            CookieOptions options = new CookieOptions();
+            options.Expires = DateTime.Now.AddDays(2);
+            Response.Cookies.Append("UserName", username, options);
+            Response.Cookies.Append("userId", userId.ToString(), options);
+            Response.Cookies.Append("groupID", groupID.ToString(), options);
+            Response.Cookies.Append("email", email.ToString(), options);
+            Response.Cookies.Append("roleName", roleName.ToString(), options);
+            Response.Cookies.Append("roleID", roleID.ToString(), options);
+            Response.Cookies.Append("isLogin", "true", options);
+
+            var claims = new[] {
+                                new Claim(JwtRegisteredClaimNames.Sub, _configuration["Jwt:Subject"]),
+                                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                                new Claim(JwtRegisteredClaimNames.Iat, DateTime.UtcNow.ToString()),
+
+                                 new Claim("UserName", username.ToString()),
+                                 new Claim("userId", userId.ToString()),
+                                 new Claim("groupID", groupID.ToString()),
+                                 new Claim("email", email.ToString()),
+                                 new Claim("roleName", roleName.ToString()),
+                                 new Claim("roleID", roleID.ToString()),
+                            };
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                _configuration["Jwt:Issuer"],
+                _configuration["Jwt:Audience"],
+                claims,
+                expires: DateTime.UtcNow.AddDays(10),
+                signingCredentials: signIn);
+            accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+            return accessToken;
+        }
+    }
+}

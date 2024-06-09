@@ -1,0 +1,104 @@
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using PingaUnitBooking.Core.Domain;
+using PingaUnitBooking.Infrastructure.Interfaces;
+using System.ComponentModel.Design;
+using System.Text.RegularExpressions;
+
+namespace PingaUnitBooking.UI.Controllers
+{
+    [Route("api/UnitController")]
+    public class UnitController : Controller
+    {
+          
+        private readonly IUnitInterface _unitInterface;
+        private readonly LocalStorageData _ld;
+        public UnitController(IUnitInterface unitInterface , LocalStorageData _ld)
+        {
+            this._unitInterface = unitInterface;
+            this._ld = _ld;
+        }
+
+        [HttpGet]
+        [Route("unitDetailsList")]
+        public async Task<IActionResult> unitDetailsList()
+        {
+            try
+            {
+                
+                var responseData = await _unitInterface.unitDetailsList(_ld.GroupID, _ld.UserID);
+                if (responseData.IsSuccess)
+                {
+                    return Json(new { success = true, data = responseData.Data }); 
+                }
+                return Json(new { success = false, data = responseData.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { succes = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        [Route("paymentPlanList")]
+        public async Task<IActionResult> paymentPlanList(decimal blockID, decimal unitID, decimal companyID, decimal locationID)
+        {
+            try
+            {
+                var responseData = await _unitInterface.paymentPlanList( blockID, unitID,  companyID, locationID);
+                if (responseData.IsSuccess)
+                {
+                    return Json(new { success = true, data = responseData.Data });
+                }
+                return Json(new { success = false, data = responseData.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { succes = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        [Route("intrestPlanList")]
+        public async Task<IActionResult> intrestPlanList(decimal companyID, decimal locationID)
+        {
+            try
+            {
+
+                var responseData = await _unitInterface.intrestPlanList(companyID,locationID, _ld.GroupID); 
+                if (responseData.IsSuccess)
+                {
+                    return Json(new { success = true, data = responseData.Data });
+                }
+                return Json(new { success = false, data = responseData.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { succes = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        [Route("addUbmUnit")]
+        public async Task<IActionResult> addUbmUnit([FromBody] UnitData _unitData)
+        {
+            try
+            {
+                _unitData.userID = _ld.UserID;
+                _unitData.groupID = _ld.GroupID;
+                      var responseData = await _unitInterface.addUbmUnit(_unitData);
+                if (responseData.IsSuccess)
+                {
+                    return Json(new { success = true, message = responseData.Message   });
+                }
+                return Json(new { success = false, data = responseData.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { succes = false, message = ex.Message });
+            }
+        }
+
+    }
+}

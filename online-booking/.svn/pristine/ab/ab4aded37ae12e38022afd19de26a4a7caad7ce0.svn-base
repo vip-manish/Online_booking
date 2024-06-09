@@ -1,0 +1,19 @@
+﻿function applicantType(type) {
+    if (type.value == "UnitBooking") {
+        document.querySelector(".projectDiv").style.display = "block";
+        document.querySelector(".projectDiv").style.display = "flex";
+        document.querySelector(".projectDiv").style.visibility = "visible";
+        document.querySelector(".RequiredDocDiv").style.display = "block";
+        document.querySelector(".RequiredDocDiv").style.display = "flex";
+        document.querySelector(".RequiredDocDiv").style.visibility = "visible";
+       
+
+    } else {
+
+        document.querySelector(".projectDiv").style.visibility = "hidden";
+        document.querySelector(".projectDiv").style.display = "none";
+        document.querySelector(".customerDiv").style.visibility = "visible";
+        document.querySelector(".RequiredDocDiv").style.visibility = "hidden";
+        document.querySelector(".RequiredDocDiv").style.display = "none";
+    }
+}

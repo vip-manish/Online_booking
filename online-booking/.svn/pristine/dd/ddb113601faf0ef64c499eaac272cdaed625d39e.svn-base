@@ -1,0 +1,280 @@
+﻿@page
+@model PingaUnitBooking.UI.Pages.Project.ProjectMasterModel
+@{
+    Layout = "~/Pages/Shared/_layout.cshtml";
+    ViewBag.ProjectPermission = (ViewBag.ActivePage == "ProjectMaster") ? "active" : "active";
+}
+
+<body class="hold-transition sidebar-mini ">
+
+    <div id="empLoader" class="loader-container">
+        <span class="loader"></span>
+    </div>
+    <div class="row" style="padding-top: 51px;">
+        <div class="col-md-12 mt-2 " style="position:sticky">
+            <nav class="navbar navbar-expand-sm " style="background-color: #36454F; position: sticky; top: 160px; border-radius: 10px ;width:100%;height:45px">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" style="color:white; font-family:Tahoma">Project Configuration List -</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav h-10 w-10">
+                    <li class="nav-item">
+                        <button style="width:120px" id="downloadSelected" type="button" class="btn btn-primary "><i class="fa fa-save"></i> Save</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    @* USER LIST DATATABLE*@
+
+    <section class="content mt-2">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                              <div class="col-lg-3">
+                                    <div class="form-group" >
+                                        <span>Select Company</span>
+                                        <select style="width:100%;" onchange="SearchData('Location')" id="companyDropdown" class="form-control" multiple data-live-search="true">
+                                        </select>
+                                    </div>
+                                </div> 
+                                
+                                <div class="col-lg-3">
+                                    <div class="form-group">
+                                        <span>Select Location</span>
+                                        <select class="selectpicker form-control" multiple data-live-search="true">
+                                            <option>Sector 83, New Gurugram</option>
+                                            <option>SECTOR 84-85, New Gurugram</option>
+                                            <option>SECTOR 50, New Gurugram</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-3">
+                                    <div class="form-group">
+                                        <span>Select Project</span>
+                                        <select class="selectpicker form-control" multiple data-live-search="true">
+                                            <option>SS CENDANA</option>
+                                            <option>SS LINDEN FLOORS</option>
+                                            <option>THE LEAF</option>
+                                            <option>THE CORALWOOD</option>
+                                            <option>ALMERIA</option>
+                                            <option>THE LEAF PENTHOUSE</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-3">
+                                    <div class="form-group">
+                                        <span>Select Tower</span>
+                                        <select class="selectpicker form-control" multiple data-live-search="true">
+                                            <option>Tower -A</option>
+                                            <option>Tower -B</option>
+                                            <option>Tower -C</option>
+                                            <option>Tower -D</option>
+                                            <option>Tower -E</option>
+                                            <option>Tower -F</option>
+                                        </select>
+                                    </div>
+                                </div>
+                           </div>
+                                                       
+                            <table id="projectUser" class="table table-bordered table-hover" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th style="font-family: 'sans-serif'; font-weight: normal; width: 50px;"><input type="checkbox" id="selectAllCheckbox" /></th>
+                                        <th style="font-family: 'sans-serif'; font-weight: normal; ">Sr.</th>
+                                        <th style="font-family: 'sans-serif'; font-weight: normal; ">Username</th>
+                                        <th style="font-family: 'sans-serif'; font-weight: normal; ">Role</th>
+                                        <th style="font-family: 'sans-serif'; font-weight: normal; ">Actions</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* ------------ADD Project  MODEL----------------*@
+
+    <div class="modal fade" id="addProjectmodal" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #36454F">
+                    <h5 id="planLabel" style="color:white;color:white">Edit Configuration</h5>&nbsp;&nbsp;&nbsp;
+                    <button style="color:white" type="button" class="close" data-dismiss="modal" tabindex="-1" aria-label="Close">
+                        <i class="fa fa-close"></i>
+                    </button>
+                </div>
+                <div class="row">
+                    <div class="col-12 col-sm-12">
+                        <div class="card card-primary card-tabs">
+                            <div class="card-body">
+                                <div class="tab-content" id="custom-tabs-one-tabContent">
+
+                                    @* ------------BASIC INFORMATION TAB----------------*@
+                                    <div class="row">
+                                        <span id="empID" hidden>0</span>
+                                        <table id="" class="table table-bordered table-hover" style="width:100%">
+                                            <thead>
+                                                <tr>
+                                                    <th style="font-family: 'sans-serif'; font-weight: normal; "></th>
+                                                    <th style="font-family: 'sans-serif'; font-weight: normal; ">Company Name</th>
+                                                    <th style="font-family: 'sans-serif'; font-weight: normal; ">Location</th>
+                                                    <th style="font-family: 'sans-serif'; font-weight: normal; ">Project</th>
+                                                    <th style="font-family: 'sans-serif'; font-weight: normal; ">Tower</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td> <input type="checkbox" checked id="selectAllCheckbox" /></td>
+                                                    <td>Pinga Solutions</td>
+                                                    <td>Noida-63</td>
+                                                    <td>Project-A</td>
+                                                    <td>Tower-A</td>
+                                                </tr>
+                                             
+                                            </tbody>
+                                        </table>
+
+                                      @*   <div class="col-lg-12">
+                                            <div class="form-group">
+                                                <div class="mr-3 w-100" style="display:inline-grid">
+                                                    <span>Select Company</span>
+                                                    <select class="selectpicker form-control" multiple data-live-search="true">
+                                                        <option>Pinga Solutions</option>
+                                                        <option>SS Group</option>
+                                                        <option>TDI PVT. LTD.</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-12">
+                                            <div class="form-group">
+                                                <div class="mr-3 w-100" style="display:inline-grid">
+                                                    <span>Select Location</span>
+                                                    <select class="selectpicker form-control" multiple data-live-search="true">
+                                                        <option>Noida</option>
+                                                        <option>Delhi</option>
+                                                        <option>Gurgwon</option>
+                                                        <option>Noida Sec-12</option>
+                                                        <option>East Delhi</option>
+                                                        <option>North Delhi</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-12">
+                                            <div class="form-group">
+                                                <div class="mr-3 w-100" style="display:inline-grid">
+                                                    <span>Select Project</span>
+                                                    <select class="selectpicker form-control" multiple data-live-search="true">
+                                                        <option>Project -A</option>
+                                                        <option>Project -B</option>
+                                                        <option>Project -C</option>
+                                                        <option>Project -D</option>
+                                                        <option>Project -E</option>
+                                                        <option>Project -F</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-12">
+                                            <div class="form-group">
+                                                <div class="mr-3 w-100" style="display:inline-grid">
+                                                    <span>Select Tower</span>
+                                                    <select class="selectpicker form-control" multiple data-live-search="true">
+                                                        <option>Tower -A</option>
+                                                        <option>Tower -B</option>
+                                                        <option>Tower -C</option>
+                                                        <option>Tower -D</option>
+                                                        <option>Tower -E</option>
+                                                        <option>Tower -F</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-12">
+                                            <div class="form-group">
+                                                <div class="mr-3 w-100" style="display:inline-grid">
+                                                    <span>Select Role</span>
+                                                    <select class="selectpicker form-control" data-live-search="false">
+                                                        <option>Sales Manager</option>
+                                                        <option>CRM</option>
+                                                        <option>Account</option>
+                                                        <option>Admin/CFO</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div> *@
+                                       
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary">Update</button>
+                                    </div>
+
+                                </div>
+                            </div>
+                            <!-- /.card -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+
+
+ @section Scripts {
+  <!-- jQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <!-- Bootstrap JS Bundle (includes Popper.js) -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Bootstrap Select CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.min.css">
+
+    <!-- Bootstrap Select JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js"></script>
+
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+
+    <!-- SweetAlert2 -->
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.11.4/css/jquery.dataTables.min.css" rel="stylesheet" type="text/css" />
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link href="~/css/animate.css" rel="stylesheet" />
+    <link href="~/css/jquery.loader.css" rel="stylesheet" />
+    <link href="~/css/loader.css" rel="stylesheet" />
+
+    <!-- Custom Scripts -->
+    <script src="~/js/Common.js"></script>
+    <script src="~/js/projectconfigure.js"></script>
+
+
+}
+
+
+</body>
